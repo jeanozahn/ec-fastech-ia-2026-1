@@ -1,0 +1,41 @@
+import heapq
+
+def ucs(grafo, inicio, objetivo):
+    fronteira = [(0, inicio, [inicio])]
+    
+    visitados = set()
+
+    while fronteira:
+        # Extrai o nó com o menor custo acumulado g(n)
+        (custo, no_atual, caminho) = heapq.heappop(fronteira)
+
+        # TESTE DE OBJETIVO: Deve ser feito ao sair da fila
+        if no_atual == objetivo:
+            return caminho, custo
+
+        if no_atual not in visitados:
+            visitados.add(no_atual)
+
+            # Expandir vizinhos
+            for vizinho, custo_passo in grafo.get(no_atual, {}).items():
+                if vizinho not in visitados:
+                    custo_total = custo + custo_passo
+                    heapq.heappush(fronteira, (custo_total, vizinho, caminho + [vizinho]))
+
+    return None, float('inf')
+
+mapa_mt = {
+    'Sinop': {'Sorriso': 85, 'Itaúba': 100, 'Cláudia': 80},
+    'Sorriso': {'Lucas': 70, 'Sinop': 85},
+    'Lucas': {'Mutum': 100, 'Sorriso': 70},
+    'Itaúba': {'Sinop': 100},
+    'Mutum': {'Cuiabá': 250, 'Lucas': 100},
+    'Cuiabá': {'Mutum': 250},
+    'Cláudia': {'Sinop': 80, 'Itaúba': 110},
+    'Vera': {'Sinop': 85, 'Cláudia': 60, 'Sorriso': 60}
+}
+
+caminho_otimo, custo_total = ucs(mapa_mt, 'Mutum', 'Cláudia')
+
+print(f"Melhor caminho: {caminho_otimo}")
+print(f"Custo total: {custo_total} km")
