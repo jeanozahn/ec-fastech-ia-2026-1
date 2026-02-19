@@ -1,0 +1,81 @@
+from collections import deque
+
+class Node:
+    """Representa um nó na árvore de busca."""
+    def __init__(self, state, parent=None, action=None, path_cost=0):
+        self.state = state      # Estado atual (posição do robô)
+        self.parent = parent    # Nó pai (quem gerou este nó)
+        self.action = action    # Ação que levou a este estado
+        self.path_cost = path_cost # Custo g(n)
+
+    def __repr__(self):
+        return f"<Node {self.state}>"
+
+def recuperar_caminho(node):
+    """Reconstrói o caminho da raiz até o nó objetivo."""
+    caminho = []
+    atual = node
+    while atual is not None:
+        caminho.append(atual.state)
+        atual = atual.parent
+    return caminho[::-1] # Inverte a lista para mostrar do início ao fim
+
+def expandir(node):
+    """Gera os sucessores de um nó (movimentos +1 e -1)."""
+    sucessores = []
+    posicao = node.state
+    
+    # Ações possíveis: Direita (+1) e Esquerda (-1)
+    for acao, movimento in [("Direita", 1), ("Esquerda", -1)]:
+        novo_estado = posicao + movimento
+        # Criamos um novo nó filho
+        filho = Node(state=novo_estado, 
+                     parent=node, 
+                     action=acao, 
+                     path_cost=node.path_cost + 1)
+        sucessores.append(filho)
+    
+    return sucessores
+
+def bfs(inicio, objetivo):
+    """Implementação da Busca em Largura (BFS)."""
+    # 1. Inicializa o nó raiz
+    raiz = Node(state=inicio)
+    
+    # 2. Testa se a raiz já é o objetivo
+    if raiz.state == objetivo:
+        return recuperar_caminho(raiz)
+
+    # 3. Fronteira (Fila FIFO) e Conjunto de Explorados
+    fronteira = deque([raiz])
+    explorados = {raiz.state}
+
+    print(f"Iniciando busca de {inicio} para {objetivo}...")
+
+    while fronteira:
+        # Remove o nó mais antigo da fila (Largura)
+        no_atual = fronteira.popleft()
+
+        # Expande os filhos
+        for filho in expandir(no_atual):
+            if filho.state not in explorados:
+                # Teste de objetivo ao gerar o filho (otimização da BFS)
+                if filho.state == objetivo:
+                    print("Objetivo encontrado!")
+                    return recuperar_caminho(filho)
+                
+                explorados.add(filho.state)
+                fronteira.append(filho)
+                
+    return None
+
+# --- Execução do Desafio ---
+posicao_inicial = 0
+posicao_final = 10
+
+resultado = bfs(posicao_inicial, posicao_final)
+
+if resultado:
+    print(f"Caminho percorrido pelo robô: {resultado}")
+else:
+    print("Não foi possível encontrar um caminho.")
