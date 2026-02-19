@@ -1,81 +1,64 @@
-from collections import deque
+import heapq
 
-class Node:
-    """Representa um nó na árvore de busca."""
-    def __init__(self, state, parent=None, action=None, path_cost=0):
-        self.state = state      # Estado atual (posição do robô)
-        self.parent = parent    # Nó pai (quem gerou este nó)
-        self.action = action    # Ação que levou a este estado
-        self.path_cost = path_cost # Custo g(n)
+# Grafo ampliado: Custo = Distância aproximada em KM
+MAPA_MT_EXTENDIDO = {
+    'Sinop': {'Sorriso': 85, 'Cláudia': 90, 'Santa Carmem': 40, 'Novo Progresso': 500, 'Alta Floresta': 315},
+    'Sorriso': {'Sinop': 85, 'Lucas do Rio Verde': 70, 'Vera': 60, 'Ipiranga do Norte': 80},
+    'Santa Carmem': {'Sinop': 40, 'Vera': 100},
+    'Vera': {'Sorriso': 60, 'Santa Carmem': 100},
+    'Cláudia': {'Sinop': 90, 'União do Sul': 80},
+    'Lucas do Rio Verde': {'Sorriso': 70, 'Nova Mutum': 100, 'Tapurah': 90},
+    'Nova Mutum': {'Lucas do Rio Verde': 100, 'Cuiabá': 250, 'Diamantino': 80},
+    'Cuiabá': {'Nova Mutum': 250, 'Rondonópolis': 215, 'Cáceres': 215, 'Primavera do Leste': 240},
+    'Rondonópolis': {'Cuiabá': 215, 'Primavera do Leste': 130, 'Barra do Garças': 390},
+    'Primavera do Leste': {'Cuiabá': 240, 'Rondonópolis': 130, 'Barra do Garças': 260},
+    'Cáceres': {'Cuiabá': 215, 'Pontes e Lacerda': 220, 'Tangará da Serra': 240},
+    'Tangará da Serra': {'Cáceres': 240, 'Diamantino': 150, 'Campo Novo do Parecis': 150},
+    'Barra do Garças': {'Primavera do Leste': 260, 'Rondonópolis': 390, 'Água Boa': 240},
+    'Alta Floresta': {'Sinop': 315, 'Colíder': 160},
+    'Colíder': {'Alta Floresta': 160, 'Sinop': 150},
+    'Novo Progresso': {'Sinop': 500}, # Já no Pará, mas conectado via BR-163
+}
 
-    def __repr__(self):
-        return f"<Node {self.state}>"
+def ucs_mato_grosso(inicio, objetivo):
+    # Fila de prioridade: (custo_acumulado, cidade_atual, caminho)
+    fronteira = [(0, inicio, [inicio])]
+    explorados = {} # Armazena o menor custo para chegar em cada cidade
 
-def recuperar_caminho(node):
-    """Reconstrói o caminho da raiz até o nó objetivo."""
-    caminho = []
-    atual = node
-    while atual is not None:
-        caminho.append(atual.state)
-        atual = atual.parent
-    return caminho[::-1] # Inverte a lista para mostrar do início ao fim
-
-def expandir(node):
-    """Gera os sucessores de um nó (movimentos +1 e -1)."""
-    sucessores = []
-    posicao = node.state
-    
-    # Ações possíveis: Direita (+1) e Esquerda (-1)
-    for acao, movimento in [("Direita", 1), ("Esquerda", -1)]:
-        novo_estado = posicao + movimento
-        # Criamos um novo nó filho
-        filho = Node(state=novo_estado, 
-                     parent=node, 
-                     action=acao, 
-                     path_cost=node.path_cost + 1)
-        sucessores.append(filho)
-    
-    return sucessores
-
-def bfs(inicio, objetivo):
-    """Implementação da Busca em Largura (BFS)."""
-    # 1. Inicializa o nó raiz
-    raiz = Node(state=inicio)
-    
-    # 2. Testa se a raiz já é o objetivo
-    if raiz.state == objetivo:
-        return recuperar_caminho(raiz)
-
-    # 3. Fronteira (Fila FIFO) e Conjunto de Explorados
-    fronteira = deque([raiz])
-    explorados = {raiz.state}
-
-    print(f"Iniciando busca de {inicio} para {objetivo}...")
+    print(f"--- Iniciando Expedição UCS: {inicio} para {objetivo} ---")
 
     while fronteira:
-        # Remove o nó mais antigo da fila (Largura)
-        no_atual = fronteira.popleft()
+        # Pega a cidade com o menor custo acumulado g(n)
+        custo_acumulado, cidade_atual, caminho = heapq.heappop(fronteira)
 
-        # Expande os filhos
-        for filho in expandir(no_atual):
-            if filho.state not in explorados:
-                # Teste de objetivo ao gerar o filho (otimização da BFS)
-                if filho.state == objetivo:
-                    print("Objetivo encontrado!")
-                    return recuperar_caminho(filho)
-                
-                explorados.add(filho.state)
-                fronteira.append(filho)
-                
-    return None
+        # Teste de objetivo
+        if cidade_atual == objetivo:
+            return caminho, custo_acumulado
 
-# --- Execução do Desafio ---
-posicao_inicial = 0
-posicao_final = 10
+        # Se já achamos um caminho mais curto para essa cidade, ignora este
+        if cidade_atual in explorados and explorados[cidade_atual] <= custo_acumulado:
+            continue
+        
+        explorados[cidade_atual] = custo_acumulado
 
-resultado = bfs(posicao_inicial, posicao_final)
+        # Expandir vizinhos
+        vizinhos = MAPA_MT_EXTENDIDO.get(cidade_atual, {})
+        for vizinho, distancia in vizinhos.items():
+            novo_custo = custo_acumulado + distancia
+            if vizinho not in explorados or novo_custo < explorados[vizinho]:
+                heapq.heappush(fronteira, (novo_custo, vizinho, caminho + [vizinho]))
 
-if resultado:
-    print(f"Caminho percorrido pelo robô: {resultado}")
+    return None, float('inf')
+
+# --- Simulação de Viagem Longa ---
+partida = 'Alta Floresta'
+destino = 'Barra do Garças'
+
+rota, km_total = ucs_mato_grosso(partida, destino)
+
+if rota:
+    print(f"\n✅ ROTA ÓTIMA ENCONTRADA:")
+    print(f"📍 Itinerário: {' ➔ '.join(rota)}")
+    print(f"🛣️ Distância Total: {km_total} km")
 else:
-    print("Não foi possível encontrar um caminho.")
+    print("\n❌ Não foi possível traçar uma rota entre esses pontos.")
